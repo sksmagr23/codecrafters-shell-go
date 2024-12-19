@@ -48,6 +48,16 @@ func main() {
 			continue
 		}
 
+		if input == "pwd" {
+			dir, err := os.Getwd()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
+			} else {
+				fmt.Println(dir)
+			}
+			continue
+		}
+
 		args := strings.Split(input, " ")
 		command := args[0]
 		pathEnv := os.Getenv("PATH")
