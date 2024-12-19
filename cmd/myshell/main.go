@@ -17,7 +17,7 @@ func main() {
 		input, _ := reader.ReadString('\n')
 		input = input[:len(input)-1]
 
-		if input == "exit" {
+		if input == "exit 0" {
 			break
 		}
 		if input != "" {
