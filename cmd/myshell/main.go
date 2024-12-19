@@ -58,7 +58,14 @@ func main() {
 			continue
 		}
 
-		
+		if len(input) >= 3 && input[:3] == "cd " {
+			dir := strings.TrimSpace(input[3:])
+			err := os.Chdir(dir)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "cd: %s: No such file or directory\n", dir)
+			}
+			continue
+		}
 
 		args := strings.Split(input, " ")
 		command := args[0]
