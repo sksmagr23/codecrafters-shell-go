@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -22,7 +23,7 @@ func main() {
 			fmt.Println(input[5:])
 			continue
 		}
-		
+
 		if len(input) >= 5 && input[:5] == "type " {
 			command := input[5:]
 			switch command {
@@ -43,6 +44,29 @@ func main() {
 				if !flag {
 					fmt.Printf("%s: not found\n", command)
 				}
+			}
+			continue
+		}
+
+		args := strings.Split(input, " ")
+		command := args[0]
+		pathEnv := os.Getenv("PATH")
+		paths := strings.Split(pathEnv, ":")
+		var fullPath string
+		for _, path := range paths {
+			fullPath = path + "/" + command
+			if _, err := os.Stat(fullPath); err == nil {
+				break
+			}
+			fullPath = ""
+		}
+		if fullPath != "" {
+			proc := exec.Command(fullPath, args[1:]...)
+			proc.Stdout = os.Stdout
+			proc.Stderr = os.Stderr
+			err := proc.Run()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error running command: %v\n", err)
 			}
 			continue
 		}
