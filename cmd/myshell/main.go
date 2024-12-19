@@ -10,13 +10,18 @@ import (
 var _ = fmt.Fprint
 
 func main() {
+	
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
 
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
 		input = input[:len(input)-1]
-
+		
+		if len(input) >= 5 && input[:5] == "echo " {
+			fmt.Println(input[5:])
+			continue
+		}
 		if input == "exit 0" {
 			break
 		}
