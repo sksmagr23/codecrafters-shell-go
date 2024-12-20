@@ -20,14 +20,33 @@ func main() {
 		input = input[:len(input)-1]
 
 		if len(input) >= 5 && input[:5] == "echo " {
-			fmt.Println(input[5:])
+			if strings.HasPrefix(input, "echo '") && strings.HasSuffix(input, "'") {
+				fmt.Println(input[6 : len(input)-1])
+			} else {
+				fmt.Println(input[5:])
+			}
+			continue
+		}
+		if len(input) >= 4 && input[:4] == "cat " {
+			files := strings.Split(input[4:], "' '")
+			for i := range files {
+				files[i] = strings.Trim(files[i], "'")
+			}
+			for _, file := range files {
+				content, err := os.ReadFile(file)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "cat: %s: No such file or directory\n", file)
+					continue
+				}
+				fmt.Print(string(content))
+			}
 			continue
 		}
 
 		if len(input) >= 5 && input[:5] == "type " {
 			command := input[5:]
 			switch command {
-			case "echo", "exit", "type", "pwd", "cd":
+			case "echo", "exit", "type", "pwd", "cd", "cat":
 				fmt.Printf("%s is a shell builtin\n", command)
 			default:
 				pathEnv := os.Getenv("PATH")
