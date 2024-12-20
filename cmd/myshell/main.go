@@ -84,6 +84,23 @@ func main() {
 			continue
 		}
 
+		if len(input) > 0 && (input[0] == '"' || input[0] == '\'') {
+			args := parseArguments(input)
+			if len(args) > 0 {
+				command := args[0]
+				if _, err := os.Stat(command); err == nil {
+					proc := exec.Command(command, args[1:]...)
+					proc.Stdout = os.Stdout
+					proc.Stderr = os.Stderr
+					err := proc.Run()
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "Error running command: %v\n", err)
+					}
+					continue
+				}
+			}
+		}
+
 		args := strings.Split(input, " ")
 		command := args[0]
 		pathEnv := os.Getenv("PATH")
