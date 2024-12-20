@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+var _ = fmt.Fprint
+
 func main() {
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
@@ -82,22 +84,24 @@ func main() {
 			continue
 		}
 
-		command := args[0]
-		command = strings.Trim(command, "'\"") // Remove surrounding quotes from the executable
-
-		path := findExecutable(command)
-		if path != "" {
-			proc := exec.Command(path, args[1:]...)
-			proc.Stdout = os.Stdout
-			proc.Stderr = os.Stderr
-			err := proc.Run()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error running command: %v\n", err)
-			}
+		executable := args[0]
+		if executable[0] == '\'' || executable[0] == '"' {
+			executable = strings.Trim(executable, "'\"")
+		}
+		path, err := exec.LookPath(executable)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: command not found\n", args[0])
 			continue
 		}
 
-		fmt.Fprintf(os.Stderr, "%s: command not found\n", input)
+		// Run the command
+		cmd := exec.Command(path, args[1:]...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error running command: %v\n", err)
+		}
 	}
 }
 
