@@ -126,7 +126,12 @@ func parseArguments(input string) []string {
 
     for _, char := range input {
         if escapeNext {
-            currentArg.WriteRune(char)
+            if inQuotes && quoteChar == '"' && (char == '\\' || char == '$' || char == '"' || char == '\n') {
+                currentArg.WriteRune(char)
+            } else {
+                currentArg.WriteRune('\\')
+                currentArg.WriteRune(char)
+            }
             escapeNext = false
             continue
         }
@@ -134,11 +139,9 @@ func parseArguments(input string) []string {
         switch char {
         case '\\':
             if inQuotes && quoteChar == '"' {
-                currentArg.WriteRune(char)
-            } else if inQuotes && quoteChar == '\'' {
-                currentArg.WriteRune(char)
-            } else {
                 escapeNext = true
+            } else {
+                currentArg.WriteRune(char)
             }
         case ' ', '\t':
             if inQuotes {
