@@ -118,55 +118,62 @@ func main() {
 }
 
 func parseArguments(input string) []string {
-    var args []string
-    var currentArg strings.Builder
-    var inQuotes bool
-    var quoteChar rune
-    var escapeNext bool
+	var args []string
+	var currentArg strings.Builder
+	var inQuotes bool
+	var quoteChar rune
+	var escapeNext bool
 
-    for _, char := range input {
-        if escapeNext {
-            if inQuotes && quoteChar == '"' && (char == '\\' || char == '$' || char == '"' || char == '\n') {
-                currentArg.WriteRune(char)
-            } else {
-                currentArg.WriteRune('\\')
-                currentArg.WriteRune(char)
-            }
-            escapeNext = false
-            continue
-        }
+	for _, char := range input {
+		if escapeNext {
+			if inQuotes && quoteChar == '"' {
+				if char == '\\' || char == '$' || char == '"' || char == 'n' {
+					if char == 'n' {
+						currentArg.WriteRune('\\')
+					}
+					currentArg.WriteRune(char)
+				} else {
+					currentArg.WriteRune('\\')
+					currentArg.WriteRune(char)
+				}
+			} else {
+				currentArg.WriteRune(char)
+			}
+			escapeNext = false
+			continue
+		}
 
-        switch char {
-        case '\\':
-            if inQuotes && quoteChar == '"' {
-                escapeNext = true
-            } else {
-                currentArg.WriteRune(char)
-            }
-        case ' ', '\t':
-            if inQuotes {
-                currentArg.WriteRune(char)
-            } else if currentArg.Len() > 0 {
-                args = append(args, currentArg.String())
-                currentArg.Reset()
-            }
-        case '\'', '"':
-            if inQuotes && char == quoteChar {
-                inQuotes = false
-            } else if !inQuotes {
-                inQuotes = true
-                quoteChar = char
-            } else {
-                currentArg.WriteRune(char)
-            }
-        default:
-            currentArg.WriteRune(char)
-        }
-    }
+		switch char {
+		case '\\':
+			if inQuotes && quoteChar == '\'' {
+				currentArg.WriteRune(char)
+			} else {
+				escapeNext = true
+			}
+		case ' ', '\t':
+			if inQuotes {
+				currentArg.WriteRune(char)
+			} else if currentArg.Len() > 0 {
+				args = append(args, currentArg.String())
+				currentArg.Reset()
+			}
+		case '\'', '"':
+			if inQuotes && char == quoteChar {
+				inQuotes = false
+			} else if !inQuotes {
+				inQuotes = true
+				quoteChar = char
+			} else {
+				currentArg.WriteRune(char)
+			}
+		default:
+			currentArg.WriteRune(char)
+		}
+	}
 
-    if currentArg.Len() > 0 {
-        args = append(args, currentArg.String())
-    }
+	if currentArg.Len() > 0 {
+		args = append(args, currentArg.String())
+	}
 
-    return args
+	return args
 }
