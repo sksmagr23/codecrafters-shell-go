@@ -137,7 +137,12 @@ func parseArguments(input string) []string {
 
 	for _, char := range input {
 		if escapeNext {
-			currentArg.WriteRune(char)
+			if char == '\'' || char == '"' || char == '\\' {
+				currentArg.WriteRune(char)
+			} else {
+				currentArg.WriteRune('\\')
+				currentArg.WriteRune(char)
+			}
 			escapeNext = false
 			continue
 		}
