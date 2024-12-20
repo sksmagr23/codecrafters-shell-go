@@ -84,27 +84,29 @@ func main() {
 			continue
 		}
 
-		// Remove surrounding quotes from the executable, if any
 		executable := args[0]
 		if len(executable) > 0 && (executable[0] == '\'' || executable[0] == '"') {
 			executable = strings.Trim(executable, "'\"")
 		}
 
-		// Resolve the full path of the executable
+		executable = strings.ReplaceAll(executable, "\\'", "'")
+		executable = strings.ReplaceAll(executable, "\\\"", "\"")
+
 		path, err := exec.LookPath(executable)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: command not found\n", args[0])
 			continue
 		}
 
-		// Handle quoted arguments properly
 		for i, arg := range args {
 			if len(arg) > 0 && (arg[0] == '\'' || arg[0] == '"') {
-				args[i] = strings.Trim(arg, "'\"")
+				arg = strings.Trim(arg, "'\"")
+				arg = strings.ReplaceAll(arg, "\\'", "'")
+				arg = strings.ReplaceAll(arg, "\\\"", "\"")
+				args[i] = arg
 			}
 		}
 
-		// Execute the command with arguments
 		cmd := exec.Command(path, args[1:]...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
