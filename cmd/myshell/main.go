@@ -122,9 +122,18 @@ func parseArguments(input string) []string {
     var currentArg strings.Builder
     var inQuotes bool
     var quoteChar rune
+    var escapeNext bool
 
     for _, char := range input {
+        if escapeNext {
+            currentArg.WriteRune(char)
+            escapeNext = false
+            continue
+        }
+
         switch char {
+        case '\\':
+            escapeNext = true
         case ' ', '\t':
             if inQuotes {
                 currentArg.WriteRune(char)
