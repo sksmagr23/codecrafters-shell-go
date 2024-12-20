@@ -106,17 +106,14 @@ func main() {
 
 
 func unescapeAndTrimQuotes(input string) string {
-	if len(input) > 0 {
-		if input[0] == '\'' && input[len(input)-1] == '\'' {
-			return input[1 : len(input)-1]
-		} else if input[0] == '"' && input[len(input)-1] == '"' {
-			return input[1 : len(input)-1]
-		}
-	}
-	input = strings.ReplaceAll(input, "\\'", "'")
-	input = strings.ReplaceAll(input, "\\\"", "\"")
-	return input
+    if len(input) > 0 && (input[0] == '\'' || input[0] == '"') {
+        input = strings.Trim(input, "'\"")
+    }
+    input = strings.ReplaceAll(input, "\\'", "'")
+    input = strings.ReplaceAll(input, "\\\"", "\"")
+    return input
 }
+
 
 
 func findExecutable(command string) string {
@@ -175,4 +172,5 @@ func parseArguments(input string) []string {
 
 	return args
 }
+
 
