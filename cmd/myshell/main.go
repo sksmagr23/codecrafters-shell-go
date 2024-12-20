@@ -135,6 +135,8 @@ func parseArguments(input string) []string {
         case '\\':
             if inQuotes && quoteChar == '"' {
                 currentArg.WriteRune(char)
+            } else if inQuotes && quoteChar == '\'' {
+                currentArg.WriteRune(char)
             } else {
                 escapeNext = true
             }
