@@ -17,52 +17,37 @@ func main() {
 
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
-		input = input[:len(input)-1]
+		input = strings.TrimSpace(input)
 
-		if len(input) >= 5 && input[:5] == "echo " {
-			words := parseArguments(input[5:])
-			fmt.Println(strings.Join(words, " "))
+		if input == "" {
 			continue
 		}
 
-		if len(input) >= 4 && input[:4] == "cat " {
-			files := parseArguments(input[4:])
-			for _, file := range files {
-				content, err := os.ReadFile(file)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "cat: %s: No such file or directory\n", file)
-					continue
-				}
-				fmt.Print(string(content))
-			}
+		// Handle "exit 0" command
+		if input == "exit 0" {
+			break
+		}
+
+		// Parse input into arguments
+		args := parseArguments(input)
+		if len(args) == 0 {
 			continue
 		}
 
-		if len(input) >= 5 && input[:5] == "type " {
-			command := input[5:]
-			switch command {
-			case "echo", "exit", "type", "pwd", "cd":
-				fmt.Printf("%s is a shell builtin\n", command)
-			default:
-				pathEnv := os.Getenv("PATH")
-				paths := strings.Split(pathEnv, ":")
-				flag := false
-				for _, path := range paths {
-					fullPath := path + "/" + command
-					if _, err := os.Stat(fullPath); err == nil {
-						fmt.Printf("%s is %s\n", command, fullPath)
-						flag = true
-						break
-					}
-				}
-				if !flag {
-					fmt.Printf("%s: not found\n", command)
-				}
-			}
+		command := args[0]
+
+		// Remove surrounding quotes from the command if present
+		if strings.HasPrefix(command, "'") || strings.HasPrefix(command, "\"") {
+			command = strings.Trim(command, `"'`)
+		}
+
+		// Builtin commands
+		if command == "echo" {
+			fmt.Println(strings.Join(args[1:], " "))
 			continue
 		}
 
-		if input == "pwd" {
+		if command == "pwd" {
 			dir, err := os.Getwd()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
@@ -72,8 +57,12 @@ func main() {
 			continue
 		}
 
-		if len(input) >= 3 && input[:3] == "cd " {
-			dir := strings.TrimSpace(input[3:])
+		if command == "cd" {
+			if len(args) < 2 {
+				fmt.Fprintf(os.Stderr, "cd: missing argument\n")
+				continue
+			}
+			dir := args[1]
 			if dir == "~" {
 				dir = os.Getenv("HOME")
 			}
@@ -84,56 +73,55 @@ func main() {
 			continue
 		}
 
-		if len(input) > 0 && (input[0] == '"' || input[0] == '\'') {
-			args := parseArguments(input)
-			if len(args) > 0 {
-				command := args[0]
-				if _, err := os.Stat(command); err == nil {
-					proc := exec.Command(command, args[1:]...)
-					proc.Stdout = os.Stdout
-					proc.Stderr = os.Stderr
-					err := proc.Run()
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "Error running command: %v\n", err)
-					}
-					continue
+		if command == "type" {
+			if len(args) < 2 {
+				fmt.Fprintf(os.Stderr, "type: missing argument\n")
+				continue
+			}
+			switch args[1] {
+			case "echo", "exit", "type", "pwd", "cd":
+				fmt.Printf("%s is a shell builtin\n", args[1])
+			default:
+				path := findExecutable(args[1])
+				if path != "" {
+					fmt.Printf("%s is %s\n", args[1], path)
+				} else {
+					fmt.Printf("%s: not found\n", args[1])
 				}
 			}
+			continue
 		}
 
-		args := strings.Split(input, " ")
-		command := args[0]
-		pathEnv := os.Getenv("PATH")
-		paths := strings.Split(pathEnv, ":")
-		var fullPath string
-		for _, path := range paths {
-			fullPath = path + "/" + command
-			if _, err := os.Stat(fullPath); err == nil {
-				break
-			}
-			fullPath = ""
-		}
-		if fullPath != "" {
-			proc := exec.Command(fullPath, args[1:]...)
+		// Handle external commands
+		commandPath := findExecutable(command)
+		if commandPath != "" {
+			proc := exec.Command(commandPath, args[1:]...)
 			proc.Stdout = os.Stdout
 			proc.Stderr = os.Stderr
 			err := proc.Run()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error running command: %v\n", err)
 			}
-			continue
+		} else {
+			fmt.Fprintf(os.Stderr, "%s: command not found\n", command)
 		}
-
-		if input == "exit 0" {
-			break
-		}
-		if input != "" {
-			fmt.Fprintf(os.Stderr, "%s: command not found\n", input)
-		}
-
 	}
 }
 
+// findExecutable searches for the executable in the PATH environment variable
+func findExecutable(command string) string {
+	pathEnv := os.Getenv("PATH")
+	paths := strings.Split(pathEnv, ":")
+	for _, path := range paths {
+		fullPath := path + "/" + command
+		if _, err := os.Stat(fullPath); err == nil {
+			return fullPath
+		}
+	}
+	return ""
+}
+
+// parseArguments splits the input string into arguments, handling quotes and escapes
 func parseArguments(input string) []string {
 	var args []string
 	var currentArg strings.Builder
@@ -143,30 +131,14 @@ func parseArguments(input string) []string {
 
 	for _, char := range input {
 		if escapeNext {
-			if inQuotes && quoteChar == '"' {
-				if char == '\\' || char == '$' || char == '"' || char == 'n' {
-					if char == 'n' {
-						currentArg.WriteRune('\\')
-					}
-					currentArg.WriteRune(char)
-				} else {
-					currentArg.WriteRune('\\')
-					currentArg.WriteRune(char)
-				}
-			} else {
-				currentArg.WriteRune(char)
-			}
+			currentArg.WriteRune(char)
 			escapeNext = false
 			continue
 		}
 
 		switch char {
 		case '\\':
-			if inQuotes && quoteChar == '\'' {
-				currentArg.WriteRune(char)
-			} else {
-				escapeNext = true
-			}
+			escapeNext = true
 		case ' ', '\t':
 			if inQuotes {
 				currentArg.WriteRune(char)
