@@ -8,9 +8,6 @@ import (
 	"strings"
 )
 
-// Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
-var _ = fmt.Fprint
-
 func main() {
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
@@ -19,35 +16,46 @@ func main() {
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(input)
 
-		if input == "" {
-			continue
-		}
-
-		// Handle "exit 0" command
 		if input == "exit 0" {
 			break
 		}
 
-		// Parse input into arguments
-		args := parseArguments(input)
-		if len(args) == 0 {
+		if len(input) >= 5 && input[:5] == "echo " {
+			words := parseArguments(input[5:])
+			fmt.Println(strings.Join(words, " "))
 			continue
 		}
 
-		command := args[0]
-
-		// Remove surrounding quotes from the command if present
-		if strings.HasPrefix(command, "'") || strings.HasPrefix(command, "\"") {
-			command = strings.Trim(command, `"'`)
-		}
-
-		// Builtin commands
-		if command == "echo" {
-			fmt.Println(strings.Join(args[1:], " "))
+		if len(input) >= 4 && input[:4] == "cat " {
+			files := parseArguments(input[4:])
+			for _, file := range files {
+				content, err := os.ReadFile(file)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "cat: %s: No such file or directory\n", file)
+					continue
+				}
+				fmt.Print(string(content))
+			}
 			continue
 		}
 
-		if command == "pwd" {
+		if len(input) >= 5 && input[:5] == "type " {
+			command := input[5:]
+			switch command {
+			case "echo", "exit", "type", "pwd", "cd":
+				fmt.Printf("%s is a shell builtin\n", command)
+			default:
+				path := findExecutable(command)
+				if path != "" {
+					fmt.Printf("%s is %s\n", command, path)
+				} else {
+					fmt.Printf("%s: not found\n", command)
+				}
+			}
+			continue
+		}
+
+		if input == "pwd" {
 			dir, err := os.Getwd()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
@@ -57,12 +65,8 @@ func main() {
 			continue
 		}
 
-		if command == "cd" {
-			if len(args) < 2 {
-				fmt.Fprintf(os.Stderr, "cd: missing argument\n")
-				continue
-			}
-			dir := args[1]
+		if len(input) >= 3 && input[:3] == "cd " {
+			dir := strings.TrimSpace(input[3:])
 			if dir == "~" {
 				dir = os.Getenv("HOME")
 			}
@@ -73,42 +77,30 @@ func main() {
 			continue
 		}
 
-		if command == "type" {
-			if len(args) < 2 {
-				fmt.Fprintf(os.Stderr, "type: missing argument\n")
-				continue
-			}
-			switch args[1] {
-			case "echo", "exit", "type", "pwd", "cd":
-				fmt.Printf("%s is a shell builtin\n", args[1])
-			default:
-				path := findExecutable(args[1])
-				if path != "" {
-					fmt.Printf("%s is %s\n", args[1], path)
-				} else {
-					fmt.Printf("%s: not found\n", args[1])
-				}
-			}
+		args := parseArguments(input)
+		if len(args) == 0 {
 			continue
 		}
 
-		// Handle external commands
-		commandPath := findExecutable(command)
-		if commandPath != "" {
-			proc := exec.Command(commandPath, args[1:]...)
+		command := args[0]
+		command = strings.Trim(command, "'\"") // Remove surrounding quotes from the executable
+
+		path := findExecutable(command)
+		if path != "" {
+			proc := exec.Command(path, args[1:]...)
 			proc.Stdout = os.Stdout
 			proc.Stderr = os.Stderr
 			err := proc.Run()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error running command: %v\n", err)
 			}
-		} else {
-			fmt.Fprintf(os.Stderr, "%s: command not found\n", command)
+			continue
 		}
+
+		fmt.Fprintf(os.Stderr, "%s: command not found\n", input)
 	}
 }
 
-// findExecutable searches for the executable in the PATH environment variable
 func findExecutable(command string) string {
 	pathEnv := os.Getenv("PATH")
 	paths := strings.Split(pathEnv, ":")
@@ -121,7 +113,6 @@ func findExecutable(command string) string {
 	return ""
 }
 
-// parseArguments splits the input string into arguments, handling quotes and escapes
 func parseArguments(input string) []string {
 	var args []string
 	var currentArg strings.Builder
