@@ -48,7 +48,7 @@ func main() {
 		if len(input) >= 5 && input[:5] == "type " {
 			command := input[5:]
 			switch command {
-			case "echo", "exit", "type", "pwd", "cd", "cat":
+			case "echo", "exit", "type", "pwd", "cd":
 				fmt.Printf("%s is a shell builtin\n", command)
 			default:
 				pathEnv := os.Getenv("PATH")
