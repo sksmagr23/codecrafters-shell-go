@@ -81,8 +81,8 @@ func main() {
 		if len(args) == 0 {
 			continue
 		}
-		executable := args[0]
-		executable = unescapeAndTrimQuotes(executable)
+
+		executable := unescapeAndTrimQuotes(args[0])
 
 		path, err := exec.LookPath(executable)
 		if err != nil {
