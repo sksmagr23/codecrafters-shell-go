@@ -20,20 +20,13 @@ func main() {
 		input = input[:len(input)-1]
 
 		if len(input) >= 5 && input[:5] == "echo " {
-			if strings.HasPrefix(input, "echo '") && strings.HasSuffix(input, "'") {
-				fmt.Println(input[6 : len(input)-1])
-			} else {
-				words := strings.Fields(input[5:])
-				fmt.Println(strings.Join(words, " "))
-			}
+			words := parseArguments(input[5:])
+			fmt.Println(strings.Join(words, " "))
 			continue
 		}
 
 		if len(input) >= 4 && input[:4] == "cat " {
-			files := strings.Split(input[4:], "' '")
-			for i := range files {
-				files[i] = strings.Trim(files[i], "'")
-			}
+			files := parseArguments(input[4:])
 			for _, file := range files {
 				content, err := os.ReadFile(file)
 				if err != nil {
@@ -122,4 +115,40 @@ func main() {
 		}
 
 	}
+}
+
+func parseArguments(input string) []string {
+    var args []string
+    var currentArg strings.Builder
+    var inQuotes bool
+    var quoteChar rune
+
+    for _, char := range input {
+        switch char {
+        case ' ', '\t':
+            if inQuotes {
+                currentArg.WriteRune(char)
+            } else if currentArg.Len() > 0 {
+                args = append(args, currentArg.String())
+                currentArg.Reset()
+            }
+        case '\'', '"':
+            if inQuotes && char == quoteChar {
+                inQuotes = false
+            } else if !inQuotes {
+                inQuotes = true
+                quoteChar = char
+            } else {
+                currentArg.WriteRune(char)
+            }
+        default:
+            currentArg.WriteRune(char)
+        }
+    }
+
+    if currentArg.Len() > 0 {
+        args = append(args, currentArg.String())
+    }
+
+    return args
 }
