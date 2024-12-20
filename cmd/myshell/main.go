@@ -23,10 +23,12 @@ func main() {
 			if strings.HasPrefix(input, "echo '") && strings.HasSuffix(input, "'") {
 				fmt.Println(input[6 : len(input)-1])
 			} else {
-				fmt.Println(input[5:])
+				words := strings.Fields(input[5:])
+				fmt.Println(strings.Join(words, " "))
 			}
 			continue
 		}
+
 		if len(input) >= 4 && input[:4] == "cat " {
 			files := strings.Split(input[4:], "' '")
 			for i := range files {
