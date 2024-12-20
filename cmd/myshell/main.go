@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-var _ = fmt.Fprint
-
 func main() {
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
@@ -83,14 +81,8 @@ func main() {
 		if len(args) == 0 {
 			continue
 		}
-
 		executable := args[0]
-		if len(executable) > 0 && (executable[0] == '\'' || executable[0] == '"') {
-			executable = strings.Trim(executable, "'\"")
-		}
-
-		executable = strings.ReplaceAll(executable, "\\'", "'")
-		executable = strings.ReplaceAll(executable, "\\\"", "\"")
+		executable = unescapeAndTrimQuotes(executable)
 
 		path, err := exec.LookPath(executable)
 		if err != nil {
@@ -99,12 +91,7 @@ func main() {
 		}
 
 		for i, arg := range args {
-			if len(arg) > 0 && (arg[0] == '\'' || arg[0] == '"') {
-				arg = strings.Trim(arg, "'\"")
-				arg = strings.ReplaceAll(arg, "\\'", "'")
-				arg = strings.ReplaceAll(arg, "\\\"", "\"")
-				args[i] = arg
-			}
+			args[i] = unescapeAndTrimQuotes(arg)
 		}
 
 		cmd := exec.Command(path, args[1:]...)
@@ -114,8 +101,16 @@ func main() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error running command: %v\n", err)
 		}
-
 	}
+}
+
+func unescapeAndTrimQuotes(input string) string {
+	if len(input) > 0 && (input[0] == '\'' || input[0] == '"') {
+		input = strings.Trim(input, "'\"")
+	}
+	input = strings.ReplaceAll(input, "\\'", "'")
+	input = strings.ReplaceAll(input, "\\\"", "\"")
+	return input
 }
 
 func findExecutable(command string) string {
@@ -139,12 +134,7 @@ func parseArguments(input string) []string {
 
 	for _, char := range input {
 		if escapeNext {
-			if char == '\'' || char == '"' || char == '\\' {
-				currentArg.WriteRune(char)
-			} else {
-				currentArg.WriteRune('\\')
-				currentArg.WriteRune(char)
-			}
+			currentArg.WriteRune(char)
 			escapeNext = false
 			continue
 		}
